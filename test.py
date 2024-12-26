@@ -49,7 +49,8 @@ async def start(update: Update, context: CallbackContext) -> None:
             await update.message.reply_text(
                 "👋 *Welcome to the Rino Mods Bot!* 🎮\n\n"
                 "To get paid mod free key, please join our channel first. 🔒\n\n"
-                "👇 Click below to join the channel 👇",
+                "👇 Click below to join the channel 👇\n\n"
+                "👇 after join the channel /start bot again 👇\n\n",
                 reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
