@@ -1,1 +1,2 @@
-pyTelegramBotAPI==4.11.0
+python-telegram-bot==20.1
+nest-asyncio==1.5.6
