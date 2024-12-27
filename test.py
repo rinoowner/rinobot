@@ -3,6 +3,7 @@ import nest_asyncio
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 import logging
+from datetime import datetime, timedelta
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -21,12 +22,16 @@ user_ids = set()  # Using a set to avoid duplicates
 # Free key link (dynamic)
 free_key_link = "https://t.me/rinosetup"  # Default link
 
+# Data structure to store user info
+user_data = {}
+
 # Start command
 async def start(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     user_id = user.id
     username = user.username if user.username else "N/A"
     first_name = user.first_name if user.first_name else "N/A"
+    today = datetime.now().strftime("%Y-%m-%d")
 
     # Notify admin when a new user starts the bot
     await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=f"🚨 New user started the bot! 🚨\n\n"
@@ -35,6 +40,12 @@ async def start(update: Update, context: CallbackContext) -> None:
 
     # Add user to the user_ids set (this will be used for broadcasting)
     user_ids.add(user_id)
+
+    # Update user data
+    if user_id not in user_data:
+        user_data[user_id] = {"joined_date": today, "last_active": today, "is_vip": False}
+    else:
+        user_data[user_id]["last_active"] = today
 
     # Check if user is a member of the required channel
     try:
@@ -168,6 +179,35 @@ async def update_key(update: Update, context: CallbackContext) -> None:
     else:
         await update.message.reply_text("❌ You are not authorized to update the free key link.")
 
+# User analytics command
+async def analytics(update: Update, context: CallbackContext) -> None:
+    if str(update.message.from_user.id) == ADMIN_CHAT_ID:
+        # Total users
+        total_users = len(user_data)
+
+        # Active users in last 24 hours
+        active_users = sum(1 for user in user_data.values() 
+                           if datetime.strptime(user['last_active'], "%Y-%m-%d") >= datetime.now() - timedelta(days=1))
+
+        # VIP users count
+        vip_users = sum(1 for user in user_data.values() if user.get('is_vip', False))
+
+        # Recent users in the last 7 days
+        new_users = sum(1 for user in user_data.values() 
+                        if datetime.strptime(user['joined_date'], "%Y-%m-%d") >= datetime.now() - timedelta(days=7))
+
+        # Analytics report
+        report = (
+            f"📊 *User Analytics Dashboard*\n\n"
+            f"👥 *Total Users:* {total_users}\n"
+            f"🟢 *Active Users (24h):* {active_users}\n"
+            f"⭐ *VIP Users:* {vip_users}\n"
+            f"🆕 *New Users (7d):* {new_users}\n"
+        )
+        await update.message.reply_text(report, parse_mode="Markdown")
+    else:
+        await update.message.reply_text("❌ You are not authorized to view analytics.")
+
 # Main function to start the bot
 async def main():
     application = Application.builder().token("7834989916:AAH1C-jvfyMlq7YjQ0EBnYZORWCpsOlO-w0").build()
@@ -176,6 +216,7 @@ async def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("broadcast", broadcast))
     application.add_handler(CommandHandler("updatekey", update_key))
+    application.add_handler(CommandHandler("analytics", analytics))
 
     # Register message handler to handle button presses
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_buttons))
